@@ -17,6 +17,7 @@ class GtpConnection():
 
     def __init__(self, go_engine, debug_mode = False):
         """
+        Hello, this is Brett.
         object that plays Go using GTP
 
         Parameters
