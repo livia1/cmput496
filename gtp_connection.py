@@ -358,7 +358,48 @@ class GtpConnection():
             self.respond('Error: {} is not a valid timelimit'.format(int(args[0])))
 
 #http://stackoverflow.com/questions/3393612/run-certain-code-every-n-seconds
+
+    def isSuccess(self, args):
+        global DRAW_WINNER
+        color = state.winner()
+        return (   color == state.toPlay 
+                or (color == EMPTY and state.toPlay == DRAW_WINNER)
+               )
+
+    def negamaxBoolean(self, args):
+        if self.board.endOfGame():
+            return self.isSuccess(self.board)
+        for m in state.legalMoves():
+            state.play(m)
+            success = not self.negamaxBoolean(self.board)
+            state.undoMove()
+            if success:
+                return True
+        return False
+
+    def resultForBlack(self, args):
+        result = self.negamaxBoolean(self.board)
+        if state.toPlay == BLACK:
+            return result
+        else:
+            return not result
+
     def solve_cmd(self, args):
+        
+        win = self.resultForBlack(self.board)
+        if win:
+            self.respond("help")
+            return 
+        else:
+            DRAW_WINNER = BLACK
+            winOrDraw = self.resultForBlack(self.board)
+            if winOrDraw:
+                self.respond("THes;dfs")
+                return EMPTY
+            else:
+                self.respond("Resignssdfsd f")
+                return WHITE
+            
         #if timelimit == 0 print unknown
         start = time.time()
         while (time.time() - start) < self.timelimit:
