@@ -304,8 +304,8 @@ class GtpConnection():
         self.showboard_cmd(self)
 
     def final_score_cmd(self, args):
-        self.respond(self.board.final_score(self.komi))
-
+        self.respond(self.board.final_score(self.komi)) 
+	
     def genmove_cmd(self, args):
         """
         generate a move for the specified color
@@ -319,13 +319,21 @@ class GtpConnection():
             board_color : {'b','w'}
         """
         try:
+            start = time.time()
             board_color = args[0].lower()
             color = GoBoardUtil.color_to_int(board_color)
+			# Call solve if there is a response play
+            while (time.time() - start) <= self.timelimit:
+                print (time.time() - start)
+			     # Call the solve command here
+                # if solve command returns != NULL move = the returned
+                # Else gen a random move. which is the line below
             move = self.go_engine.get_move(self.board, color)
+                
             if move is None:
                 self.respond("Resign")
                 return
-
+            
             if not self.board.check_legal(move, color):
                 move = self.board._point_to_coord(move)
                 board_move = GoBoardUtil.format_point(move)
@@ -340,6 +348,7 @@ class GtpConnection():
         except Exception as e:
             
             self.respond('Error: {}'.format(str(e)))
+			
     def timelimit_cmd(self, args):
         print ("reached time limit command")
         if int(args[0]) >= 1 and int(args[0]) <= 100:
@@ -351,9 +360,12 @@ class GtpConnection():
 #http://stackoverflow.com/questions/3393612/run-certain-code-every-n-seconds
     def solve_cmd(self, args):
         #if timelimit == 0 print unknown
-        t = threading.Timer(self.timelimit, self.unknown)
-        t.start()
+        start = time.time()
+        while (time.time() - start) < self.timelimit:
+            print (time.time() - start)
+
         print("reached solve command")
+        self.respond('Unknown')
         
     def unknown(self):
         self.respond('Unknown')
