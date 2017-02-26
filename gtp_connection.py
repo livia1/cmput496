@@ -323,12 +323,13 @@ class GtpConnection():
             board_color = args[0].lower()
             color = GoBoardUtil.color_to_int(board_color)
 			# Call solve if there is a response play
-            while (time.time() - start) <= self.timelimit:
-                print (time.time() - start)
+            #while (time.time() - start) <= self.timelimit:
+             #   print (time.time() - start)
+            move = self.solve(self.board)
 			     # Call the solve command here
                 # if solve command returns != NULL move = the returned
                 # Else gen a random move. which is the line below
-            move = self.go_engine.get_move(self.board, color)
+            #move = self.go_engine.get_move(self.board, color)
                 
             if move is None:
                 self.respond("Resign")
