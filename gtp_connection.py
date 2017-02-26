@@ -325,7 +325,7 @@ class GtpConnection():
 			# Call solve if there is a response play
             #while (time.time() - start) <= self.timelimit:
              #   print (time.time() - start)
-            move = self.solve(self.board)
+            move = self.solve_cmd(self.board)
 			     # Call the solve command here
                 # if solve command returns != NULL move = the returned
                 # Else gen a random move. which is the line below
