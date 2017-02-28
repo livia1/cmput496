@@ -12,6 +12,8 @@ from board import GoBoard
 from board_util import GoBoardUtil, BLACK, WHITE, EMPTY, BORDER, FLOODFILL
 import numpy as np
 import re
+#Modded BW Code
+import copy 
 
 class GtpConnection():
 
@@ -51,7 +53,8 @@ class GtpConnection():
 			"legal_moves": self.legal_moves_cmd,
 			"timelimit": self.timelimit_cmd,
 			"solve": self.solve_cmd,
-			"undo": self.undo_cmd
+			"undo": self.undo_cmd,
+			"undolast": self.undo_last_cmd
 		}
 
 		# used for argument checking
@@ -64,7 +67,12 @@ class GtpConnection():
 			"genmove": (1, 'Usage: genmove {w, b}'),
 			"play": (2, 'Usage: play {b, w} MOVE'),
 			"legal_moves": (1, 'Usage: legal_moves {w, b}'), "timelimit": (1, "Usage: timelimit INT")
+
 		}
+		# Modded BW Code
+		self.last_state = GoBoard(7)
+		self.state_counter = 0
+		self.played_states = []
 	
 	def __del__(self):
 		sys.stdout = self.stdout
@@ -276,6 +284,7 @@ class GtpConnection():
 	
 	
 	def undo_cmd(self, args):
+		
 		board_color = args[0].lower()
 		board_move = args[1]
 		color = GoBoardUtil.color_to_int(board_color)
@@ -287,6 +296,27 @@ class GtpConnection():
 		if not self.board.undo(move, color):
 			return
 		self.respond()
+		
+
+	def undo_last_cmd(self, args):
+		"""
+		BW Code:
+		Changes board to last move,
+		Makes the last board the undone one
+		Makes use of deep copy
+		"""
+		"""temp_board = copy.deepcopy(self.board)
+		self.board = copy.deepcopy(self.last_state)
+		self.last_state = copy.deepcopy(temp_board)"""
+		if len(self.played_states) > 0: 
+			self.board = copy.deepcopy(self.played_states[-1])
+			self.played_states.pop(-1)
+			self.respond("Last State")
+			self.showboard_cmd(self)
+		else:
+			self.respond("No previous states")
+
+
 		
 	def play_cmd(self, args):
 		"""
@@ -308,15 +338,26 @@ class GtpConnection():
 			color = GoBoardUtil.color_to_int(board_color)
 			move = GoBoardUtil.move_to_coord(args[1], self.board.size)
 			if move:
+				# Modded BW Code
+				#temp_state = copy.deepcopy(self.board)
+				#self.last_state = copy.deepcopy(self.board)
+				self.played_states.append(copy.deepcopy(self.board))
 				move = self.board._coord_to_point(move[0], move[1])
+
+
 			else:
 				return
 			if not self.board.move(move, color):
 				return
+			#self.played_states.append(copy.deepcopy(self.board))
 			self.respond()
 		except Exception as e:
 			self.respond("illegal move: {} {} {}".format(board_color, board_move, str(e)))
+			self.played_states.pop(-1)
 		self.showboard_cmd(self)
+		# Modded BW Code
+		#self.last_state = copy.deepcopy(self.board)
+		#self.played_states.append(copy.deepcopy(self.board))
 
 	def final_score_cmd(self, args):
 		self.respond(self.board.final_score(self.komi)) 
@@ -387,7 +428,10 @@ class GtpConnection():
 		for m in moves:
 			self.commands["play"]([GoBoardUtil.int_to_color(self.board.to_play), m])
 			success = not self.negamaxBoolean(self.board)
-		self.commands["undo"]([GoBoardUtil.int_to_color(self.board.to_play), m])
+			self.undo_last_cmd(self)
+			#self.undo_last_cmd(self)
+		#self.undo_last_cmd(self)
+		#self.commands["undo"]([GoBoardUtil.int_to_color(self.board.to_play), m])
 #		self.board[m] = 0
 #		self.board.undo([GoBoardUtil.int_to_color(self.board.to_play), m])
 #		GoBoardUtil.undo()
@@ -401,6 +445,7 @@ class GtpConnection():
 
 	def resultForBlack(self, args):
 		result = self.negamaxBoolean(self.board)
+		self.respond(result)
 		if self.board.self.commands[command_name](args) == BLACK:
 			return result
 		else:
