@@ -53,7 +53,6 @@ class GtpConnection():
 			"legal_moves": self.legal_moves_cmd,
 			"timelimit": self.timelimit_cmd,
 			"solve": self.solve_cmd,
-			"undo": self.undo_cmd,
 			"undolast": self.undo_last_cmd,
 			"test": self.testingstuff_cmd
 		}
@@ -295,23 +294,7 @@ class GtpConnection():
 			moves = GoBoardUtil.generate_legal_moves(self.board, color)
 			self.respond(moves)
 		except Exception as e:
-			self.respond('Error: {}'.format(str(e)))
-	
-	
-	def undo_cmd(self, args):
-		
-		board_color = args[0].lower()
-		board_move = args[1]
-		color = GoBoardUtil.color_to_int(board_color)
-		move = GoBoardUtil.move_to_coord(args[1], self.board.size)
-		if move:
-			move = self.board._coord_to_point(move[0], move[1])
-		else:
-			return
-		if not self.board.undo(move, color):
-			return
-		self.respond()
-		
+			self.respond('Error: {}'.format(str(e)))		
 
 	def undo_last_cmd(self, args):
 		"""
@@ -333,8 +316,6 @@ class GtpConnection():
 		if len(self.state_commands) > 0:
 			self.state_commands.pop(-1)
 
-
-		
 	def play_cmd(self, args, other = 0):
 		"""
 		play a move as the given color
@@ -355,20 +336,14 @@ class GtpConnection():
 			color = GoBoardUtil.color_to_int(board_color)
 			move = GoBoardUtil.move_to_coord(args[1], self.board.size)
 			if move:
-				# Modded BW Code
-				#temp_state = copy.deepcopy(self.board)
-				#self.last_state = copy.deepcopy(self.board)
 				self.played_states.append(copy.deepcopy(self.board))
 				self.state_commands.append([board_color, board_move])
 				self.total_counter += 1
 				move = self.board._coord_to_point(move[0], move[1])
-
-
 			else:
 				return
 			if not self.board.move(move, color):
 				return
-			#self.played_states.append(copy.deepcopy(self.board))
 			if other == 0:
 				self.respond()
 		except Exception as e:
@@ -377,9 +352,6 @@ class GtpConnection():
 			self.played_states.pop(-1)
 			self.state_commands.pop(-1)
 		self.showboard_cmd(self)
-		# Modded BW Code
-		#self.last_state = copy.deepcopy(self.board)
-		#self.played_states.append(copy.deepcopy(self.board))
 
 	def final_score_cmd(self, args):
 		self.respond(self.board.final_score(self.komi)) 
@@ -397,7 +369,7 @@ class GtpConnection():
 			board_color : {'b','w'}
 		"""
 		try:
-			start = time.time()
+			start = time.process_time()
 			board_color = args[0].lower()
 			color = GoBoardUtil.color_to_int(board_color)
 			'''
@@ -418,13 +390,15 @@ class GtpConnection():
 			first move we made will be an optimal move
 			'''
 			# Call solve if there is a response play
-			#while (time.time() - start) <= self.timelimit:
-			 #   print (time.time() - start)
-#			move = self.solve_cmd(self.board)
+			while (time.process_time() - start) <= self.timelimit:
+				move = self.solve_cmd(self.board)
+				stoptime = time.process_time() - Time
 				 # Call the solve command here
 				# if solve command returns != NULL move = the returned
 				# Else gen a random move. which is the line below
-			move = self.go_engine.get_move(self.board, color)
+			
+			if (stoptime > self.timelimit):
+				move = self.go_engine.get_move(self.board, color)
 				
 			if move is None:
 				self.respond("Resign")
@@ -454,7 +428,6 @@ class GtpConnection():
 
 	def isSuccess(self, args):
 		color = self.board.get_winner()
-		#print(color, "is the winner")
 		return (color)#== self.board.get_color() or (color == EMPTY and state.toPlay == DRAW_WINNER))
 
 	def negamaxBoolean(self, board, Time):
@@ -491,8 +464,10 @@ class GtpConnection():
 			if success:
 				return True
 			return False
+		
 		print("Times up Undoing all moves and exiting the negamaxboolean")
-
+#		exit()
+		
 	def testingstuff_cmd(self, args):
 		for x in range(len(self.state_win_commands)-1):
 			print(self.state_win_commands[x])
@@ -503,7 +478,6 @@ class GtpConnection():
 			
 	def resultForBlack(self, board, time):
 		result = self.negamaxBoolean(board, time)
-		#self.respond(result)
 		if self.does_black_win == True:
 			if self.dont_double == False:
 				self.dont_double = True
@@ -512,14 +486,8 @@ class GtpConnection():
 				if self.total_counter%2 == 0:
 					colr = self.state_win_commands[self.total_counter][0]
 					mve = self.state_win_commands[self.total_counter][1]
-					#self.respond(colr, mve)
 					self.respond(colr + " " + mve)
-					#self.respond(self.state_win_commands[self.total_counter])
-					#self.respond(test_string)
-				else: #self.total_counter%2 == 1:
 					self.respond('b')
-				#print(self.state_win_commands[self.total_counter])
-
 
 			"""for x in range(len(self.black_win_state)-1):
 
@@ -536,22 +504,18 @@ class GtpConnection():
 	def solve_cmd(self, args):
 		t = time.process_time()
 		win = self.resultForBlack(self.board, t)
+		
+		print(win, "False we did not find an answer, True if we did find an answer")
+		
+		print("finished the resultforblack in the solve_cmd")
+#		exit()
 		if win:
 			self.respond("help")
+			exit()
 			return 
 		else:
-			winOrDraw = self.resultForBlack(self.board)
-			if winOrDraw:
-				self.respond("THes;dfs")
-				return EMPTY
-			else:
-				self.respond("Resignssdfsd f")
-				return WHITE
-
-		print("reached solve command")
-		self.respond('Unknown')
+			self.respond('Unknown')
 		
-	def unknown(self):
-		self.respond('Unknown')
+
 
 
