@@ -1,3 +1,10 @@
+'''
+CURRENT PLAN:
+make sure state_win_command is appended once. get current stone color and
+print it in a winning message. Gen move will use solve and pick a good
+move.
+'''
+
 """
 Module for playing games of Go using GoTextProtocol
 
@@ -310,11 +317,11 @@ class GtpConnection():
 			self.board = copy.deepcopy(self.played_states[-1])
 			self.played_states.pop(-1)
 			#self.respond("Last State")
-			self.showboard_cmd(self)
+			#self.showboard_cmd(self)
 		else:
 			self.respond("No previous states")
-		if len(self.state_commands) > 0:
-			self.state_commands.pop(-1)
+		#if len(self.state_commands) > 0:
+			#self.state_commands.pop(-1)
 
 	def play_cmd(self, args, other = 0):
 		"""
@@ -351,7 +358,7 @@ class GtpConnection():
 				self.respond("illegal move: {} {} {}".format(board_color, board_move, str(e)))
 			self.played_states.pop(-1)
 			self.state_commands.pop(-1)
-		self.showboard_cmd(self)
+		#self.showboard_cmd(self)
 
 	def final_score_cmd(self, args):
 		self.respond(self.board.final_score(self.komi)) 
@@ -392,11 +399,11 @@ class GtpConnection():
 			# Call solve if there is a response play
 			while (time.process_time() - start) <= self.timelimit:
 				move = self.solve_cmd(self.board)
-				stoptime = time.process_time() - Time
+				stoptime = time.process_time() - start
 				 # Call the solve command here
 				# if solve command returns != NULL move = the returned
 				# Else gen a random move. which is the line below
-			
+			print("out of the loop for genmove")
 			if (stoptime > self.timelimit):
 				move = self.go_engine.get_move(self.board, color)
 				
@@ -426,31 +433,23 @@ class GtpConnection():
 		else:
 			self.respond('Error: {} is not a valid timelimit'.format(int(args[0])))
 
-	def isSuccess(self, args):
-		color = self.board.get_winner()
-		return (color)#== self.board.get_color() or (color == EMPTY and state.toPlay == DRAW_WINNER))
-
-	def negamaxBoolean(self, board, Time):
+			
+	def negamaxBoolean(self, board, Time, score):
 		'''
 		IDEA: We use DFS to go through the tree. When we reach a terminal
 		      node, we score it as a -1, so that it will return a score
 			  of 1 to the player who made the last move, which means the
 			  last player to move will get a score of 1.
+			  self.state_commands = []
+		      self.state_win_commands = []
 	    '''
 		timePassed = (time.process_time() - Time)
 		self.board = board
 		
 		super_success = False
 		if len(GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)) == 0:
-			if test == 1:
-				if self.does_black_win == False:
-					self.does_black_win = True
-					self.played_states.append(copy.deepcopy(self.board))
-					self.black_win_state = copy.deepcopy(self.played_states) 
-					self.state_win_commands = copy.deepcopy(self.state_commands)
-					self.state_win_commands.pop(-1)
-			
 			# We return -1 because this player has no more moves and lossed.
+			self.state_win_commands.append(copy.deepcopy(self.state_commands))
 			return -1
 			#return (self.isSuccess(self.board), score)
 		
@@ -460,15 +459,15 @@ class GtpConnection():
 			count = 0
 			for m in moves:
 				count = count + 1
-				self.commands["play"]([GoBoardUtil.int_to_color(self.board.to_play), m])
+				self.commands["play"]([GoBoardUtil.int_to_color(self.board.to_play), m], 5)
 				self.state_commands.append([GoBoardUtil.int_to_color(self.board.to_play), m])
+				
 				if (count != 1):
 					if (score != 1):
-						score = -self.negamaxBoolean(self.board, Time)
-					
+						self.played_states.append(copy.deepcopy(self.board))
+						score = -self.negamaxBoolean(self.board, Time, score)
+				self.state_commands.pop()	
 				self.undo_last_cmd(self)
-
-			print(self.board.get_winner())
 
 			return 1
 		
@@ -482,39 +481,20 @@ class GtpConnection():
 			y = self.black_win_state[x]
 			self.board = y
 			self.showboard_cmd(self)
-			
-	def resultForBlack(self, board, time):
-		result = self.negamaxBoolean(board, time)
-		if self.does_black_win == True:
-			if self.dont_double == False:
-				self.dont_double = True
-				if self.total_counter < 0:
-					self.total_counter = 0
-				if self.total_counter%2 == 0:
-					colr = self.state_win_commands[self.total_counter][0]
-					mve = self.state_win_commands[self.total_counter][1]
-					self.respond(colr + " " + mve)
-					self.respond('b')
-
-			"""for x in range(len(self.black_win_state)-1):
-
-				if self.black_win_state[x] == self.board:
-					self.respond("WE ARE HERE")
-					print(self.respond(self.state_win_commands[x]))
-				else:
-					counter += 1"""
-		#if self.board.self.commands[command_name](args) == BLACK:
-		#	return result
-		else:
-			return not result
 		
 	def solve_cmd(self, args):
+#		
 		t = time.process_time()
-		win = self.resultForBlack(self.board, t)
+		win = self.negamaxBoolean(self.board, t, 0)
 		
-		print(win, "False we did not find an answer, True if we did find an answer")
-		
-		print("finished the resultforblack in the solve_cmd")
+		if win == 1:
+			print("won")
+			if self.state_win_commands:
+				print(self.state_win_commands)
+		elif win == -1:
+			print("Lost")
+		else:
+			print("uuhh")
 #		exit()
 		if win:
 			self.respond("help")
@@ -522,7 +502,7 @@ class GtpConnection():
 			return 
 		else:
 			self.respond('Unknown')
-		
+
 
 
 
