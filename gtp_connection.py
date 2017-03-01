@@ -461,7 +461,6 @@ class GtpConnection():
 
 		super_success = False
 		if len(GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)) == 0:
-			return self.isSuccess(self.board)
 			if test == 1:
 				if self.does_black_win == False:
 					self.does_black_win = True
