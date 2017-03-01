@@ -431,7 +431,12 @@ class GtpConnection():
 		return (color)#== self.board.get_color() or (color == EMPTY and state.toPlay == DRAW_WINNER))
 
 	def negamaxBoolean(self, board, Time):
-		
+		'''
+		IDEA: We use DFS to go through the tree. When we reach a terminal
+		      node, we score it as a -1, so that it will return a score
+			  of 1 to the player who made the last move, which means the
+			  last player to move will get a score of 1.
+	    '''
 		timePassed = (time.process_time() - Time)
 		self.board = board
 		
@@ -444,25 +449,28 @@ class GtpConnection():
 					self.black_win_state = copy.deepcopy(self.played_states) 
 					self.state_win_commands = copy.deepcopy(self.state_commands)
 					self.state_win_commands.pop(-1)
-			return self.isSuccess(self.board)
+			
+			# We return -1 because this player has no more moves and lossed.
+			return -1
+			#return (self.isSuccess(self.board), score)
 		
 		moves = GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)
 		moves = moves.split(" ")
 		while timePassed < self.timelimit:
+			count = 0
 			for m in moves:
+				count = count + 1
 				self.commands["play"]([GoBoardUtil.int_to_color(self.board.to_play), m])
 				self.state_commands.append([GoBoardUtil.int_to_color(self.board.to_play), m])
-				success = not self.negamaxBoolean(self.board, Time)
+				if (count != 1):
+					if (score != 1):
+						score = -self.negamaxBoolean(self.board, Time)
+					
 				self.undo_last_cmd(self)
-				if success:
-					print("Check")
-					break
 
 			print(self.board.get_winner())
 
-			if success:
-				return True
-			return False
+			return 1
 		
 		print("Times up Undoing all moves and exiting the negamaxboolean")
 #		exit()
