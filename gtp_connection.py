@@ -54,7 +54,7 @@ class GtpConnection():
 			"timelimit": self.timelimit_cmd,
 			"solve": self.solve_cmd,
 			"undo": self.undo_cmd,
-			"undolast": self.undo_last_cmd
+			"undolast": self.undo_last_cmd,
 			"test": self.testingstuff_cmd
 		}
 
@@ -327,7 +327,7 @@ class GtpConnection():
 			self.board = copy.deepcopy(self.played_states[-1])
 			self.played_states.pop(-1)
 			#self.respond("Last State")
-			#self.showboard_cmd(self)
+			self.showboard_cmd(self)
 		else:
 			self.respond("No previous states")
 		if len(self.state_commands) > 0:
