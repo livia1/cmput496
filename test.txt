@@ -1,0 +1,31 @@
+# boardsize 2
+# clear_board
+# timelimit 10
+# play b a1
+# 10 solve 
+# #? [b]		# It doesn't matter where white plays, black will win
+
+boardsize 3
+clear_board
+timelimit 10
+play b a1
+play w b1
+play b a2
+play w b2
+play b c3
+play w b3
+#20 solve
+#? [b c1| b c2]
+
+boardsize 3
+clear_board
+timelimit 10
+play b b2
+play w b1
+play b a2
+play w a3
+play b c3
+play w c2
+#20 solve
+#? [b a1]		
+

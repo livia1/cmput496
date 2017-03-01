@@ -376,7 +376,7 @@ class GtpConnection():
 				self.respond("illegal move: {} {} {}".format(board_color, board_move, str(e)))
 			self.played_states.pop(-1)
 			self.state_commands.pop(-1)
-		#self.showboard_cmd(self)
+		self.showboard_cmd(self)
 		# Modded BW Code
 		#self.last_state = copy.deepcopy(self.board)
 		#self.played_states.append(copy.deepcopy(self.board))
@@ -485,13 +485,7 @@ class GtpConnection():
 				if success:
 					print("Check")
 					break
-			#self.undo_last_cmd(self)
-		#self.undo_last_cmd(self)
-		#self.commands["undo"]([GoBoardUtil.int_to_color(self.board.to_play), m])
-#		self.board[m] = 0
-#		self.board.undo([GoBoardUtil.int_to_color(self.board.to_play), m])
-#		GoBoardUtil.undo()
-#		self.board.get_winner()
+
 			print(self.board.get_winner())
 
 			if success:
@@ -541,22 +535,11 @@ class GtpConnection():
 		
 	def solve_cmd(self, args):
 		t = time.process_time()
-#		start = time.time()
-#		while (time.time() - start) < self.timelimit:
-##		moves = GoBoardUtil.generate_legal_moves(self.board, 2)
-#		self.commands["legal_moves"]('b')
-#		print(len(moves), type(moves), moves)
-#		exit()
-
-#		moves = GoBoardUtil.generate_legal_moves(self.board, GoBoardUtil.color_to_int(args[0].lower()))
-		
-	
 		win = self.resultForBlack(self.board, t)
 		if win:
 			self.respond("help")
 			return 
 		else:
-#			DRAW_WINNER = BLACK
 			winOrDraw = self.resultForBlack(self.board)
 			if winOrDraw:
 				self.respond("THes;dfs")
@@ -564,10 +547,6 @@ class GtpConnection():
 			else:
 				self.respond("Resignssdfsd f")
 				return WHITE
-			
-		#if timelimit == 0 print unknown
-
-			print (time.time() - start)
 
 		print("reached solve command")
 		self.respond('Unknown')
