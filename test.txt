@@ -27,5 +27,4 @@ play w a3
 play b c3
 play w c2
 #20 solve
-#? [b a1]		
-
+#? [b a1]

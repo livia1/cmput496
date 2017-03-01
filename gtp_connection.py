@@ -392,11 +392,11 @@ class GtpConnection():
 			# Call solve if there is a response play
 			while (time.process_time() - start) <= self.timelimit:
 				move = self.solve_cmd(self.board)
-				stoptime = time.process_time() - Time
+				stoptime = time.process_time() - start
 				 # Call the solve command here
 				# if solve command returns != NULL move = the returned
 				# Else gen a random move. which is the line below
-			
+			print("out of the loop for genmove")
 			if (stoptime > self.timelimit):
 				move = self.go_engine.get_move(self.board, color)
 				
@@ -426,10 +426,7 @@ class GtpConnection():
 		else:
 			self.respond('Error: {} is not a valid timelimit'.format(int(args[0])))
 
-	def isSuccess(self, args):
-		color = self.board.get_winner()
-		return (color)#== self.board.get_color() or (color == EMPTY and state.toPlay == DRAW_WINNER))
-
+			
 	def negamaxBoolean(self, board, Time):
 		
 		timePassed = (time.process_time() - Time)
@@ -437,15 +434,7 @@ class GtpConnection():
 		
 		super_success = False
 		if len(GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)) == 0:
-			return self.isSuccess(self.board)
-			if test == 1:
-				if self.does_black_win == False:
-					self.does_black_win = True
-					self.played_states.append(copy.deepcopy(self.board))
-					self.black_win_state = copy.deepcopy(self.played_states) 
-					self.state_win_commands = copy.deepcopy(self.state_commands)
-					self.state_win_commands.pop(-1)
-			return self.isSuccess(self.board)
+			return self.board.get_winner()
 		
 		moves = GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)
 		moves = moves.split(" ")
@@ -455,9 +444,10 @@ class GtpConnection():
 				self.state_commands.append([GoBoardUtil.int_to_color(self.board.to_play), m])
 				success = not self.negamaxBoolean(self.board, Time)
 				self.undo_last_cmd(self)
+				
 				if success:
 					print("Check")
-					break
+#					break
 
 			print(self.board.get_winner())
 
@@ -475,35 +465,11 @@ class GtpConnection():
 			y = self.black_win_state[x]
 			self.board = y
 			self.showboard_cmd(self)
-			
-	def resultForBlack(self, board, time):
-		result = self.negamaxBoolean(board, time)
-		if self.does_black_win == True:
-			if self.dont_double == False:
-				self.dont_double = True
-				if self.total_counter < 0:
-					self.total_counter = 0
-				if self.total_counter%2 == 0:
-					colr = self.state_win_commands[self.total_counter][0]
-					mve = self.state_win_commands[self.total_counter][1]
-					self.respond(colr + " " + mve)
-					self.respond('b')
-
-			"""for x in range(len(self.black_win_state)-1):
-
-				if self.black_win_state[x] == self.board:
-					self.respond("WE ARE HERE")
-					print(self.respond(self.state_win_commands[x]))
-				else:
-					counter += 1"""
-		#if self.board.self.commands[command_name](args) == BLACK:
-		#	return result
-		else:
-			return not result
 		
 	def solve_cmd(self, args):
+#		
 		t = time.process_time()
-		win = self.resultForBlack(self.board, t)
+		win = not self.negamaxBoolean(self.board, t)
 		
 		print(win, "False we did not find an answer, True if we did find an answer")
 		
@@ -515,7 +481,7 @@ class GtpConnection():
 			return 
 		else:
 			self.respond('Unknown')
-		
+
 
 
 
