@@ -55,6 +55,7 @@ class GtpConnection():
 			"solve": self.solve_cmd,
 			"undo": self.undo_cmd,
 			"undolast": self.undo_last_cmd
+			"test": self.testingstuff_cmd
 		}
 
 		# used for argument checking
@@ -73,6 +74,12 @@ class GtpConnection():
 		self.last_state = GoBoard(7)
 		self.state_counter = 0
 		self.played_states = []
+		self.does_black_win = False 
+		self.black_win_state = []
+		self.state_commands = []
+		self.state_win_commands = []
+		self.total_counter = 0
+		self.dont_double = False
 	
 	def __del__(self):
 		sys.stdout = self.stdout
@@ -133,7 +140,7 @@ class GtpConnection():
 			self.debug_msg("Unknown command: {}\n".format(command_name))
 			self.error('Unknown command')
 			sys.stdout.flush()
-
+		
 	def arg_error(self, cmd, argnum):
 		"""
 		checker funciton for the number of arguments given to a command
@@ -198,6 +205,14 @@ class GtpConnection():
 
 	def clear_board_cmd(self, args):
 		""" clear the board """
+		self.state_counter = 0
+		self.played_states = []
+		self.does_black_win = False 
+		self.black_win_state = []
+		self.state_commands = []
+		self.state_win_commands = []
+		self.total_counter = 0
+		self.dont_double = False
 		self.reset(self.board.size)
 		self.respond()
 
@@ -311,14 +326,16 @@ class GtpConnection():
 		if len(self.played_states) > 0: 
 			self.board = copy.deepcopy(self.played_states[-1])
 			self.played_states.pop(-1)
-			self.respond("Last State")
-			self.showboard_cmd(self)
+			#self.respond("Last State")
+			#self.showboard_cmd(self)
 		else:
 			self.respond("No previous states")
+		if len(self.state_commands) > 0:
+			self.state_commands.pop(-1)
 
 
 		
-	def play_cmd(self, args):
+	def play_cmd(self, args, other = 0):
 		"""
 		play a move as the given color
 
@@ -342,6 +359,8 @@ class GtpConnection():
 				#temp_state = copy.deepcopy(self.board)
 				#self.last_state = copy.deepcopy(self.board)
 				self.played_states.append(copy.deepcopy(self.board))
+				self.state_commands.append([board_color, board_move])
+				self.total_counter += 1
 				move = self.board._coord_to_point(move[0], move[1])
 
 
@@ -350,11 +369,14 @@ class GtpConnection():
 			if not self.board.move(move, color):
 				return
 			#self.played_states.append(copy.deepcopy(self.board))
-			self.respond()
+			if other == 0:
+				self.respond()
 		except Exception as e:
-			self.respond("illegal move: {} {} {}".format(board_color, board_move, str(e)))
+			if other == 0:
+				self.respond("illegal move: {} {} {}".format(board_color, board_move, str(e)))
 			self.played_states.pop(-1)
-		self.showboard_cmd(self)
+			self.state_commands.pop(-1)
+		#self.showboard_cmd(self)
 		# Modded BW Code
 		#self.last_state = copy.deepcopy(self.board)
 		#self.played_states.append(copy.deepcopy(self.board))
@@ -378,6 +400,23 @@ class GtpConnection():
 			start = time.time()
 			board_color = args[0].lower()
 			color = GoBoardUtil.color_to_int(board_color)
+			'''
+			We have the stone color and the board state at this point.
+			
+			PLAN: We look recursively through the board states. When we
+			find a winning state, we return the first move.
+			
+			PROBLEM: We have no heuristic to determine if that move is
+			actually a winning move. ie, the second player could play
+			an optimal move that may divert from the winning state we
+			found.
+			
+			IDEA: When we find a winning state, we take the first move
+			that lead to that, then we "make" that move for the second
+			player and see if their first winning move leads to the
+			same state, if it does, then there is a better chance the
+			first move we made will be an optimal move
+			'''
 			# Call solve if there is a response play
 			#while (time.time() - start) <= self.timelimit:
 			 #   print (time.time() - start)
@@ -415,20 +454,33 @@ class GtpConnection():
 
 	def isSuccess(self, args):
 		color = self.board.get_winner()
-		print(color, "is the winner")
+		#print(color, "is the winner")
 		return (color)#== self.board.get_color() or (color == EMPTY and state.toPlay == DRAW_WINNER))
 
 	def negamaxBoolean(self, args):
 
+		super_success = False
 		if len(GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)) == 0:
+			return self.isSuccess(self.board)
+			if test == 1:
+				if self.does_black_win == False:
+					self.does_black_win = True
+					self.played_states.append(copy.deepcopy(self.board))
+					self.black_win_state = copy.deepcopy(self.played_states) 
+					self.state_win_commands = copy.deepcopy(self.state_commands)
+					self.state_win_commands.pop(-1)
 			return self.isSuccess(self.board)
 		
 		moves = GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)
 		moves = moves.split(" ")
 		for m in moves:
 			self.commands["play"]([GoBoardUtil.int_to_color(self.board.to_play), m])
+			self.state_commands.append([GoBoardUtil.int_to_color(self.board.to_play), m])
 			success = not self.negamaxBoolean(self.board)
 			self.undo_last_cmd(self)
+			if success:
+				print("Check")
+				break
 			#self.undo_last_cmd(self)
 		#self.undo_last_cmd(self)
 		#self.commands["undo"]([GoBoardUtil.int_to_color(self.board.to_play), m])
@@ -438,16 +490,47 @@ class GtpConnection():
 #		self.board.get_winner()
 		print(self.board.get_winner())
 	
-		
 		if success:
 			return True
 		return False
 
+	def testingstuff_cmd(self, args):
+		for x in range(len(self.state_win_commands)-1):
+			print(self.state_win_commands[x])
+		for x in range(len(self.black_win_state)-1):
+			y = self.black_win_state[x]
+			self.board = y
+			self.showboard_cmd(self)
+			
 	def resultForBlack(self, args):
 		result = self.negamaxBoolean(self.board)
-		self.respond(result)
-		if self.board.self.commands[command_name](args) == BLACK:
-			return result
+		#self.respond(result)
+		if self.does_black_win == True:
+			if self.dont_double == False:
+				self.dont_double = True
+				if self.total_counter < 0:
+					self.total_counter = 0
+				if self.total_counter%2 == 0:
+					colr = self.state_win_commands[self.total_counter][0]
+					mve = self.state_win_commands[self.total_counter][1]
+					#self.respond(colr, mve)
+					self.respond(colr + " " + mve)
+					#self.respond(self.state_win_commands[self.total_counter])
+					#self.respond(test_string)
+				else: #self.total_counter%2 == 1:
+					self.respond('b')
+				#print(self.state_win_commands[self.total_counter])
+
+
+			"""for x in range(len(self.black_win_state)-1):
+
+				if self.black_win_state[x] == self.board:
+					self.respond("WE ARE HERE")
+					print(self.respond(self.state_win_commands[x]))
+				else:
+					counter += 1"""
+		#if self.board.self.commands[command_name](args) == BLACK:
+		#	return result
 		else:
 			return not result
 		
@@ -485,4 +568,5 @@ class GtpConnection():
 		
 	def unknown(self):
 		self.respond('Unknown')
+
 
