@@ -86,6 +86,9 @@ class GtpConnection():
 		self.state_win_commands = []
 		self.total_counter = 0
 		self.dont_double = False
+		self.negamax_count = 0
+		self.solve_move_pick = []
+		self.played_counter = 0
 	
 	def __del__(self):
 		sys.stdout = self.stdout
@@ -344,7 +347,6 @@ class GtpConnection():
 			move = GoBoardUtil.move_to_coord(args[1], self.board.size)
 			if move:
 				self.played_states.append(copy.deepcopy(self.board))
-				self.state_commands.append([board_color, board_move])
 				self.total_counter += 1
 				move = self.board._coord_to_point(move[0], move[1])
 			else:
@@ -353,12 +355,13 @@ class GtpConnection():
 				return
 			if other == 0:
 				self.respond()
+				self.played_counter += 1
 		except Exception as e:
 			if other == 0:
 				self.respond("illegal move: {} {} {}".format(board_color, board_move, str(e)))
 			self.played_states.pop(-1)
 			self.state_commands.pop(-1)
-		#self.showboard_cmd(self)
+		self.showboard_cmd(self)
 
 	def final_score_cmd(self, args):
 		self.respond(self.board.final_score(self.komi)) 
@@ -396,18 +399,15 @@ class GtpConnection():
 			same state, if it does, then there is a better chance the
 			first move we made will be an optimal move
 			'''
-			# Call solve if there is a response play
-			while (time.process_time() - start) <= self.timelimit:
-				move = self.solve_cmd(self.board)
-				stoptime = time.process_time() - start
-				 # Call the solve command here
-				# if solve command returns != NULL move = the returned
-				# Else gen a random move. which is the line below
-			print("out of the loop for genmove")
-			if (stoptime > self.timelimit):
+			move = self.solve_cmd(self.board)
+			if move != None:
+				splitColor, splitMove = move.split(" ")
+				self.commands["play"]([splitColor, splitMove], 5)
+
+			elif (stoptime > self.timelimit):
 				move = self.go_engine.get_move(self.board, color)
 				
-			if move is None:
+			elif move is None:
 				self.respond("Resign")
 				return
 			
@@ -455,18 +455,35 @@ class GtpConnection():
 		
 		moves = GoBoardUtil.generate_legal_moves(self.board, self.board.to_play)
 		moves = moves.split(" ")
+
+		#ADDED CODE:
+		best = -100
+
 		while timePassed < self.timelimit:
-			count = 0
+			#count = 0
 			for m in moves:
-				count = count + 1
+				self.negamax_count += 1
+				#count = count + 1
+				move_played = [GoBoardUtil.int_to_color(self.board.to_play), m]
+				self.state_commands.append([GoBoardUtil.int_to_color(self.board.to_play), m])			
 				self.commands["play"]([GoBoardUtil.int_to_color(self.board.to_play), m], 5)
-				self.state_commands.append([GoBoardUtil.int_to_color(self.board.to_play), m])
+				#print([GoBoardUtil.int_to_color(self.board.to_play), m])
+				#self.state_commands.append([GoBoardUtil.int_to_color(self.board.to_play), m])
+				#print(self.state_commands)
 				
-				if (count != 1):
-					if (score != 1):
-						self.played_states.append(copy.deepcopy(self.board))
-						score = -self.negamaxBoolean(self.board, Time, score)
-				self.state_commands.pop()	
+				#ADDED CODE:
+				value = -self.negamaxBoolean(self.board, Time, score)
+				if (value > best):
+					print(best)
+					best = value
+					print("Made it")
+					print(best)
+					self.state_win_commands = copy.deepcopy(self.state_commands)
+					if self.negamax_count == 1:
+						self.solve_move_pick = copy.deepcopy(move_played)
+				if self.negamax_count == 1:
+					self.played_states.append(copy.deepcopy(self.board))
+				self.negamax_count -= 1
 				self.undo_last_cmd(self)
 
 			return 1
@@ -484,24 +501,33 @@ class GtpConnection():
 		
 	def solve_cmd(self, args):
 #		
+		org_board = copy.deepcopy(self.board)
 		t = time.process_time()
-		win = self.negamaxBoolean(self.board, t, 0)
-		
-		if win == 1:
-			print("won")
-			if self.state_win_commands:
-				print(self.state_win_commands)
-		elif win == -1:
-			print("Lost")
-		else:
-			print("uuhh")
-#		exit()
-		if win:
-			self.respond("help")
-			exit()
-			return 
-		else:
-			self.respond('Unknown')
+		try:
+			win = self.negamaxBoolean(self.board, t, 0)
+			self.board = org_board
+
+			if win == 1:
+				if self.played_counter%2 == 0:
+					print("won")
+					next_move = self.solve_move_pick[0]+ " " + self.solve_move_pick[1]
+					self.respond(next_move)
+							# Added BW code
+					del self.state_win_commands[:]
+					del self.state_commands[:]
+					return (next_move)
+				else:
+					self.respond("b")
+			elif win == -1:
+				print("Lost")
+			else:
+				print("uuhh")
+
+		# Added BW code
+			del self.state_win_commands[:]
+			del self.state_commands[:]
+		except: 
+			self.respond("Unknown")
 
 
 
